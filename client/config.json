@@ -1,0 +1,7 @@
+{
+    "server_url": "http://192.168.29.74:9990",
+    "capture_interval": 2,
+    "custom_name": "",
+    "auto_start": true,
+    "headless": false
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        header {
+            background: #16213e;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f3460;
+        }
+        h1 {
+            font-size: 24px;
+            color: #00d9ff;
+        }
+        .status {
+            font-size: 14px;
+            color: #888;
+        }
+        .status span {
+            color: #00ff88;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .machine-card {
+            background: #16213e;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #0f3460;
+        }
+        .machine-header {
+            padding: 15px;
+            background: #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .machine-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #00d9ff;
+        }
+        .machine-time {
+            font-size: 12px;
+            color: #888;
+        }
+        .screenshot-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #000;
+        }
+        .screenshot-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .no-screenshot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 14px;
+        }
+        .refresh-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #16213e;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #00d9ff;
+            border: 1px solid #0f3460;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lab Monitor</h1>
+        <div class="status">Machines: <span id="machine-count">0</span></div>
+    </header>
+    
+    <div class="grid" id="grid">
+        {% for machine in machines %}
+        <div class="machine-card" data-name="{{ machine.name }}">
+            <div class="machine-header">
+                <div class="machine-name">{{ machine.name }}</div>
+                <div class="machine-time">{{ machine.last_seen }}</div>
+            </div>
+            <div class="screenshot-container">
+                <img src="{{ machine.latest_image }}" alt="{{ machine.name }}">
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="refresh-indicator">Auto-refresh: 2s</div>
+
+    <script>
+        async function fetchMachines() {
+            try {
+                const response = await fetch('/api/machines');
+                const machines = await response.json();
+                
+                document.getElementById('machine-count').textContent = machines.length;
+                
+                const grid = document.getElementById('grid');
+                const existingCards = {};
+                
+                document.querySelectorAll('.machine-card').forEach(card => {
+                    existingCards[card.dataset.name] = card;
+                });
+                
+                const currentNames = new Set(machines.map(m => m.name));
+                
+                for (const name in existingCards) {
+                    if (!currentNames.has(name)) {
+                        existingCards[name].remove();
+                    }
+                }
+                
+                machines.forEach(machine => {
+                    let card = existingCards[machine.name];
+                    
+                    if (!card) {
+                        card = document.createElement('div');
+                        card.className = 'machine-card';
+                        card.dataset.name = machine.name;
+                        card.innerHTML = `
+                            <div class="machine-header">
+                                <div class="machine-name"></div>
+                                <div class="machine-time"></div>
+                            </div>
+                            <div class="screenshot-container">
+                                <img src="" alt="">
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                        existingCards[machine.name] = card;
+                    }
+                    
+                    card.querySelector('.machine-name').textContent = machine.name;
+                    card.querySelector('.machine-time').textContent = machine.last_seen;
+                    card.querySelector('img').src = machine.latest_image + '?t=' + Date.now();
+                });
+            } catch (error) {
+                console.error('Error fetching machines:', error);
+            }
+        }
+        
+        fetchMachines();
+        setInterval(fetchMachines, 2000);
+    </script>
+</body>
+</html>
